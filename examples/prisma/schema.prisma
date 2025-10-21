@@ -1,0 +1,142 @@
+// This is an example Prisma schema for AgendeJá+
+// Copy this to backend/prisma/schema.prisma after creating the backend
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLIENT
+  PROFESSIONAL
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String
+  phone         String?
+  role          UserRole  @default(CLIENT)
+  avatar        String?
+  emailVerified Boolean   @default(false) @map("email_verified")
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  professional  Professional?
+  appointments  Appointment[]
+  reviews       Review[]
+
+  @@map("users")
+}
+
+model Professional {
+  id              String    @id @default(uuid())
+  userId          String    @unique @map("user_id")
+  businessName    String    @map("business_name")
+  description     String?
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?   @map("zip_code")
+  rating          Float     @default(0)
+  totalReviews    Int       @default(0) @map("total_reviews")
+  verified        Boolean   @default(false)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services        Service[]
+  availabilities  Availability[]
+  appointments    Appointment[]
+
+  @@map("professionals")
+}
+
+model Service {
+  id              String    @id @default(uuid())
+  professionalId  String    @map("professional_id")
+  name            String
+  description     String?
+  duration        Int       // em minutos
+  price           Float
+  category        String?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  professional    Professional    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+
+  @@map("services")
+}
+
+model Availability {
+  id              String    @id @default(uuid())
+  professionalId  String    @map("professional_id")
+  dayOfWeek       Int       @map("day_of_week") // 0-6 (domingo a sábado)
+  startTime       String    @map("start_time")  // formato HH:mm
+  endTime         String    @map("end_time")    // formato HH:mm
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  professional    Professional    @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@map("availabilities")
+}
+
+model Appointment {
+  id              String              @id @default(uuid())
+  clientId        String              @map("client_id")
+  professionalId  String              @map("professional_id")
+  serviceId       String              @map("service_id")
+  scheduledAt     DateTime            @map("scheduled_at")
+  status          AppointmentStatus   @default(PENDING)
+  notes           String?
+  cancelReason    String?             @map("cancel_reason")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  client          User          @relation(fields: [clientId], references: [id])
+  professional    Professional  @relation(fields: [professionalId], references: [id])
+  service         Service       @relation(fields: [serviceId], references: [id])
+  review          Review?
+
+  @@map("appointments")
+}
+
+model Review {
+  id              String    @id @default(uuid())
+  appointmentId   String    @unique @map("appointment_id")
+  clientId        String    @map("client_id")
+  rating          Int       // 1-5
+  comment         String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  client          User        @relation(fields: [clientId], references: [id])
+
+  @@map("reviews")
+}

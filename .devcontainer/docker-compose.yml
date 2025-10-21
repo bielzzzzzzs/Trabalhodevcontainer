@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../..:/workspaces:cached
+    working_dir: /workspace
+    command: sleep infinity
+    network_mode: service:db
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@localhost:5432/agendeja_db
+      - NODE_ENV=development
+      - PORT=3001
+      - FRONTEND_PORT=3000
+
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: agendeja_db
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres-data:
